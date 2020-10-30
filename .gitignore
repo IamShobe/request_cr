@@ -1,0 +1,7 @@
+.idea/
+.DS_Store
+public/*.js
+public/images/
+*.zip
+node_modules/
+

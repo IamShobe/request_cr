@@ -1,0 +1,23 @@
+{
+  "name": "CR Requester",
+  "version": "1.0",
+  "description": "Request a cr with a button press!",
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "permissions": ["declarativeContent", "storage",  "webNavigation", "tabs", "*://*.github.com/*", "https://hooks.slack.com/*"],
+  "page_action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["contentScript.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    "images/*"
+  ],
+  "manifest_version": 2
+}
