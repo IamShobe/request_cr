@@ -17,7 +17,7 @@ const Wrapper = styled.div`
   z-index: 10000001;
   border-radius: 5px;
   border: 1px solid lightgray;
-  padding: 10px;
+  padding: 0 10px 10px 10px;
   min-width: 600px;
   transform: translateY(calc(100% + 5px));
 `
