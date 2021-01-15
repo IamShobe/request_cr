@@ -1,4 +1,5 @@
 .idea/
+*.js.map
 .DS_Store
 public/*.js
 public/images/

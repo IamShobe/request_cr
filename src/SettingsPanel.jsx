@@ -1,13 +1,10 @@
 import React, {useState, useEffect, useContext} from 'react';
 import styled from 'styled-components';
-import {StateContext} from "./StateContext";
-import {getVars} from "./content/staticVars";
 import lodash from "lodash";
 import { v4 as uuidv4 } from 'uuid';
+import {FormContext} from "./state/FormState";
+import { observer } from "mobx-react"
 
-
-let messageVariables = [];
-const formParams = {};
 
 
 const Wrapper = styled.div`
@@ -44,18 +41,25 @@ const InputWrapper = styled.div`
 `
 
 const Button = styled.button`
-  background-color: #2ea44f;
+  min-width: 100px;
+  background-color: ${({stretched}) => stretched ? '#2ea44f' : '#fafbfc'} ;
   border: 1px solid lightgray;
   padding: 5px;
   margin-top: 5px;
   border-radius: 5px;
-  color: white;
-  font-weight: bold;
-  
+  color: ${({stretched}) => stretched ? 'white' : 'black'} ;
+  font-weight: 500;
+  flex: ${({stretched}) => stretched ? 1 : undefined};
+
   &:hover {
-   background-color: #2c974b;
+    background-color: ${({stretched}) => stretched ? '#2c974b' : '#f3f4f6'} ;
   }
 `
+
+const ButtonWrappers = styled.div`
+  display: flex;
+`
+
 const TabHolder = styled.div`
   display: flex;
   width: 100%;
@@ -84,13 +88,13 @@ const StyledMessage = styled.textarea`
   height: 200px;
 `
 
-const StaticInput = (Component) => ({initialValue, valueReader, ...props}) => {
+const StaticInput = (Component) => observer(({initialValue, valueReader, ...props}) => {
   const [value, setValue] = useState([initialValue, null]);
   useEffect(() => {
     valueReader?.(...value)
   }, [value]);
   return <Component value={value[0]} onChange={(e) => setValue([e.target.value, value[0]])} {...props}/>
-}
+})
 
 const Input = StaticInput(StyledInput);
 const Message = StaticInput(StyledMessage);
@@ -117,133 +121,178 @@ const StyledTableRow = styled.div`
 
 const Delete = styled.button`
   border-radius: 5px;
-  width: 100px;
+  min-width: 100px;
   background-color: #a42e2e;
   border: 1px solid lightgray;
   margin-left: 5px;
   color: white;
-  font-weight: bold;
+  font-weight: 500;
+  white-space: nowrap;
   
   &:hover {
    background-color: #972c2c;
   }
 `
 
+const Default = styled(Delete)`
+  background-color: #2e4fa4;
+ 
+  &:hover {
+   background-color: #2c5397;
+  }
+`
+
 const StyledTableInput = styled.input`
-  min-width: 200px;
+  min-width: 100px;
   flex: ${({stretched=false}) => stretched && 1};
 `;
 const TableInput = StaticInput(StyledTableInput);
 
-const TableRow = ({valKey, value, uneditable=false, valueReaderKey, valueReaderValue, deleteRow}) => {
+const TableRow = observer(({valKey, value, uneditable=false, valueReaderKey, valueReaderValue, deleteRow, defaultText, setDefault, canBeDefault}) => {
   return <StyledTableRow uneditable={uneditable}>
     <TableInput initialValue={valKey} disabled={uneditable} valueReader={valueReaderKey}/>=
     <TableInput initialValue={value} disabled={uneditable} valueReader={valueReaderValue} stretched/>
     {!uneditable && <Delete onClick={deleteRow}>Delete</Delete>}
+    {defaultText && setDefault && canBeDefault && <Default onClick={setDefault}>Repo Default</Default>}
   </StyledTableRow>
-}
+})
 
 const EMPTY_VARIABLE = {key: '', value: ''}
-const VariablesTable = ({variables}) => {
-  const [editableVars, setEditableVars] = useState(variables);
+const VariablesTable = observer(({variablesKey, uneditableVars, onDelete, setDefault, defaultLabel, canBeDefault}) => {
+  const {formState: form} = useContext(FormContext);
   useEffect(() => {
-    messageVariables = editableVars
-    if (editableVars.length === 0 || editableVars[editableVars.length - 1].key !== '') {
-      setEditableVars([...editableVars, {...EMPTY_VARIABLE, uuid: uuidv4()}])
+    if (form[variablesKey].length === 0 || form[variablesKey][form[variablesKey].length - 1].key !== '') {
+      form[variablesKey] = [...form[variablesKey], {...EMPTY_VARIABLE, uuid: uuidv4()}]
     }
-  }, [editableVars])
+  }, [form[variablesKey]])
+
 
   const deleteRow = (index) => (() => {
-    const copy = [...editableVars];
+    onDelete?.(form[variablesKey][index]);
+    const copy = [...form[variablesKey]];
     copy.splice(index, 1)
-    setEditableVars(copy);
+    form[variablesKey] = copy;
   })
+
 
   const valueReaderKey = (index) => {
     return value => {
-      const copy = [...editableVars];
+      const copy = [...form[variablesKey]];
       if(!copy[index]) copy[index] = {...EMPTY_VARIABLE}
       copy[index].key = value;
-      setEditableVars(copy)
+      form[variablesKey] = copy
     }
   }
 
   const valueReaderValue = (index) => {
     return value => {
-      const copy = [...editableVars];
+      const copy = [...form[variablesKey]];
       if(!copy[index]) copy[index] = {...EMPTY_VARIABLE}
       copy[index].value = value;
-      setEditableVars(copy)
+      form[variablesKey] = copy
     }
   };
 
   return <TableWrapper>
-      {
-        Object.entries(getVars()).map(([key, value]) => <TableRow key={key} valKey={key} value={value} uneditable={true}/>)
-      }
-      {
-        editableVars.map((variable, index) => <TableRow key={`${variable.uuid}`} valKey={variable.key} value={variable.value}
-                                                        valueReaderKey={valueReaderKey(index)} valueReaderValue={valueReaderValue(index)}
-                                                        deleteRow={deleteRow(index)}/>)
-      }
+    {
+      uneditableVars && Object.entries(uneditableVars).map(([key, value]) => <TableRow key={key} valKey={key} value={value} uneditable={true}/>)
+    }
+    {
+      form[variablesKey].map((variable, index) => <TableRow key={`${variable.uuid}`} valKey={variable.key}
+                                                            value={variable.value}
+                                                            valueReaderKey={valueReaderKey(index)}
+                                                            valueReaderValue={valueReaderValue(index)}
+                                                            setDefault={setDefault?.(index)}
+                                                            defaultText={defaultLabel}
+                                                            canBeDefault={canBeDefault?.(index)}
+                                                            deleteRow={deleteRow(index)}/>)
+    }
   </TableWrapper>
-}
+})
 
 
-const TabSelector = ({tab}) => {
-  const state = useContext(StateContext);
-  const [messageFormat, setMessageFormat] = state.messageFormatTuple;
-  const [variables] = state.variablesTuple;
+const TabSelector = observer(({tab, uneditableVars}) => {
+  const {formState} = useContext(FormContext);
 
   const valueReader = (key) => {
-    return value => formParams[key] = value;
+    return value => formState[key] = value;
   };
+
+  const setDefaultRepoWebhook = (index) => () => {
+    formState.defaultWebhooks[uneditableVars.fullName] = formState.webhookUrls[index].uuid;
+  }
+
+  const canBeDefault = (index) =>
+    ((formState.defaultWebhooks[uneditableVars.fullName] !== formState.webhookUrls[index].uuid) &&
+      (Boolean(formState.webhookUrls[index].key) && Boolean(formState.webhookUrls[index].value)))
+
+  const onDelete = (deleted) => {
+    if (formState.defaultWebhooks[uneditableVars.fullName] === deleted.uuid) {
+      delete formState.defaultWebhooks[uneditableVars.fullName];
+    }
+  }
 
   switch (tab) {
     case 'variables':
       return (
-        <VariablesTable variables={variables}/>
+        <VariablesTable key='variables' variablesKey={'editableVars'} uneditableVars={uneditableVars}/>
       )
+    case 'webhooksUrls':
+      return (
+        <VariablesTable key='webhooksUrls' variablesKey={'webhookUrls'} setDefault={setDefaultRepoWebhook}
+                        canBeDefault={canBeDefault} defaultLabel='Repo Default'
+                        onDelete={onDelete}
+        />
+      )
+
     default:
     case 'message':
       return (
-        <InputWrapper>
-          <Message initialValue={messageFormat} valueReader={valueReader('messageFormat')}/>
+        <InputWrapper key='message'>
+          <Message initialValue={formState.messageFormat} valueReader={valueReader('messageFormat')}/>
         </InputWrapper>
       )
   }
-}
+})
 
+const AVAILABLE_TABS = [
+  'message', 'variables', 'webhooksUrls'
+]
 
-export const SettingsPanel = React.forwardRef(({}, ref) => {
-  const [tab, setTab] = useState(null);
-  const state = useContext(StateContext);
-  const [, setMessageFormat] = state.messageFormatTuple;
-  const [webhookURL, setWebhookURL] = state.webhookURLTuple;
-  const [,setVariables] = state.variablesTuple;
-  const saveSettings = () => {
-    const editableVariables = lodash.uniqBy(messageVariables, 'key').filter(v => v.key);
-    setVariables(editableVariables)
-    setMessageFormat(formParams.messageFormat);
-    setWebhookURL(formParams.webhookURL);
+export const SettingsPanel = observer(React.forwardRef(({isOpen, setOpen, uneditableVars, requestCR}, ref) => {
+  const [tab, setTab] = useState(isOpen);
+  const {formState} = useContext(FormContext);
+
+  const webhookUUID = formState.defaultWebhooks[uneditableVars.fullName];
+  const webhook = lodash.find(formState.webhookUrls, {uuid: webhookUUID});
+
+  const saveSettings = async () => {
+    await formState.saveToServer();
+    setOpen?.(false);
   }
 
-  const valueReader = (key) => {
-    return value => formParams[key] = value;
-  };
+  const saveAndSend = async () => {
+    if (!webhook) {
+      setTab('webhooksUrls')
+      return;
+    }
+    await formState.saveToServer();
+    requestCR();
+    setOpen?.(false);
+  }
 
   return <Wrapper ref={ref}>
-    <InputWrapper>
-      Webhook URL
-      <Input initialValue={webhookURL} valueReader={valueReader('webhookURL')}/>
-    </InputWrapper>
     <TabHolder>
-      <Tab onClick={() => setTab('message')} selected={!tab || tab === 'message'}>Message</Tab>
+      <Tab onClick={() => setTab('message')} selected={tab === 'message' || (Boolean(tab) && !AVAILABLE_TABS.includes(tab))}>Message</Tab>
       <Tab onClick={() => setTab('variables')} selected={tab === 'variables'}>Variables</Tab>
+      <Tab onClick={() => setTab('webhooksUrls')} selected={tab === 'webhooksUrls'}>Webhooks Urls</Tab>
     </TabHolder>
-    <TabSelector tab={tab}/>
-    <Button onClick={saveSettings}>Save</Button>
+    <TabSelector tab={tab} uneditableVars={uneditableVars}/>
+    <ButtonWrappers>
+      <Button style={{marginRight: 5}} onClick={saveSettings}>Save</Button>
+      <Button onClick={saveAndSend} stretched>{webhook ? `Save & Send (${webhook.key})` : 'Choose repo default url'}</Button>
+    </ButtonWrappers>
   </Wrapper>
-})
+}))
 
 export default SettingsPanel

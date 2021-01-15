@@ -7,6 +7,7 @@ module.exports = {
     popup: path.resolve(__dirname, 'src', 'popup.jsx'),
     background: path.resolve(__dirname, 'src', 'background.js')
   },
+  devtool: 'source-map',
   output: {
     path: path.resolve(__dirname, 'public')
   },

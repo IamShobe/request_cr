@@ -4,8 +4,9 @@ import styled from 'styled-components';
 import SettingsPanel from "./SettingsPanel";
 import {POST_CR_MESSAGE} from "./api/consts";
 import slackIcon from "./assets/slack.svg";
-import {StateContext} from "./StateContext";
 import {getVars} from "./content/staticVars";
+import {FormContext} from "./state/FormState";
+import lodash from "lodash";
 
 const ButtonBase = styled.div`
   margin-top: auto;
@@ -91,26 +92,32 @@ export const SlackButton = () => {
   const settingsRef = useRef(null);
   const panelRef = useRef(null);
   const [isOpen, setOpen] = useState(false);
-  const {messageFormatTuple, variablesTuple} = useContext(StateContext);
-  const [messageFormat] = messageFormatTuple
-  const [variables] = variablesTuple;
+  const {formState} = useContext(FormContext);
+  const uneditableVars = getVars();
   const sendCRRequest = () => {
-    const staticVars = getVars()
-    const allVars = {...staticVars}
-    for (const v of variables) {
+    const webhookUUID = formState.defaultWebhooks[uneditableVars.fullName];
+    const webhook = lodash.find(formState.webhookUrls, {uuid: webhookUUID});
+    if (!webhook) {
+      setOpen('webhooksUrls');
+      return;
+    }
+    const allVars = {...uneditableVars}
+    for (const v of formState.editableVars) {
       allVars[v.key] = v.value;
     }
-    const msg = formatMessage(messageFormat, allVars);
-    chrome.runtime.sendMessage({type: POST_CR_MESSAGE, data: {
+    const msg = formatMessage(formState.messageFormat, allVars);
+    chrome.runtime.sendMessage({type: POST_CR_MESSAGE,
+      url: webhook.value,
+      data: {
         'text': msg
       }}, (response) => {
       console.log('posted message');
     })
   }
   useEffect(() => {
-    const listener = (e) => {
+    const onArrowClick = (e) => {
       if(settingsRef.current?.contains?.(e.target)) {
-        setOpen(!isOpen);
+        setOpen(!Boolean(isOpen));
       } else {
         if (!panelRef.current?.contains?.(e.target)) {
           setOpen(false);
@@ -118,16 +125,16 @@ export const SlackButton = () => {
       }
     }
 
-    document.addEventListener('click', listener, true);
+    document.addEventListener('click', onArrowClick, true);
     return () => {
-      document.removeEventListener('click', listener, true);
+      document.removeEventListener('click', onArrowClick, true);
     }
   }, [isOpen, settingsRef, panelRef]);
   return (
     <ButtonWrapper>
       <ButtonContainer onClick={sendCRRequest}><SlackIconWrapper><img src={slackURL}/></SlackIconWrapper><span>Request CR</span></ButtonContainer>
       <ButtonMore ref={settingsRef}/>
-      {isOpen && <SettingsPanel ref={panelRef} isOpen={isOpen}/>}
+      {isOpen && <SettingsPanel ref={panelRef} isOpen={isOpen} setOpen={setOpen} uneditableVars={uneditableVars} requestCR={sendCRRequest}/>}
     </ButtonWrapper>);
 }
 
