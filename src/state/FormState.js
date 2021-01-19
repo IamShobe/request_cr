@@ -17,19 +17,19 @@ class FormState {
   }
 
   updateEditableVars = async () => {
-    this.editableVars = await this.getServerKey('variables', [])
+    this.editableVars = await this.getServerKey('variables', []) ?? [];
   }
 
   updateMessageFormat = async () => {
-    this.messageFormat = await this.getServerKey('messageFormat', '');
+    this.messageFormat = await this.getServerKey('messageFormat', '') ?? '';
   }
 
   updateWebhookUrls = async () => {
-    this.webhookUrls = await this.getServerKey('webhookUrls', []);
+    this.webhookUrls = await this.getServerKey('webhookUrls', []) ?? [];
   }
 
   updateDefaultWebhooks = async () => {
-    this.defaultWebhooks = await this.getServerKey('defaultWebhooks', {});
+    this.defaultWebhooks = await this.getServerKey('defaultWebhooks', {}) ?? {};
   }
 
   registerToUpdate = () => {
