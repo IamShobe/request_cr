@@ -11,7 +11,7 @@
     "scripts": ["background.js"],
     "persistent": false
   },
-  "permissions": ["declarativeContent", "storage",  "webNavigation", "tabs", "*://*.github.com/*", "https://hooks.slack.com/*"],
+  "permissions": ["declarativeContent", "storage",  "*://*.github.com/*", "https://hooks.slack.com/*"],
   "page_action": {
     "default_popup": "popup.html"
   },
