@@ -2,6 +2,11 @@
   "name": "CR Requester",
   "version": "1.1.0",
   "description": "Request a cr with a button press!",
+  "icons": {
+      "16": "CR16.png",
+      "48": "CR48.png",
+      "128": "CR128.png"
+  },
   "background": {
     "scripts": ["background.js"],
     "persistent": false
